@@ -1,5 +1,7 @@
 # SkEco
-A simple yet effective vault economy Skript for your server.
+*A simple yet effective vault economy Skript for your server.*
+
+![Alt Text](https://i.imgur.com/KQAXWNe.png)
 
 Looking to ditch Essentials, but still need an economy plugin? Well look no further... it's right here!
 
