@@ -2,7 +2,7 @@
 
 #eco.bal - Player can check their own balance
 #eco.bal.other - Player can check balance of another player
-#eco.baltop - Player can see top 10 balance of players
+#eco.baltop - Player can see top balances of players
 #eco.pay - Player can pay money to another player
 
 #eco.admin - Player can set/reset/add/remove to/from balance of other players
@@ -24,7 +24,7 @@ options:
     #Permission message
     permmessage: &cYou do not have the required permssion for this command
 
-    version: 1.1 #Do not change
+    version: 1.1.1 #Do not change
     
 #CODE - PLEASE DO NOT EDIT BELOW THIS LINE OR YOU RISK LOSING SUPPORT FOR THIS SKRIPT
 
@@ -227,7 +227,9 @@ function sortHighestToLowest(indexes: strings, values: objects) :: strings:
     return {_indexes::*}
 
 function baltop(p: sender, page: Number):
-  set {_playersSorted::*} to sortHighestToLowest(indexes of {eco::balance::*}, {eco::balance::*})
+  loop {eco::balance::*}:
+    set {_loop::%loop-index%} to loop-index
+  set {_playersSorted::*} to sortHighestToLowest({_loop::*}, {eco::balance::*})
   set {_maxPage} to rounded up (size of {_playersSorted::*}/10)
   if {_maxPage} is less than 1:
     set {_maxPag} to 1
