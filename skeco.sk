@@ -24,14 +24,14 @@ options:
     #Permission message
     permmessage: &cYou do not have the required permssion for this command
 
-    version: 1.0.1 #Do not change
+    version: 1.1 #Do not change
     
 #CODE - PLEASE DO NOT EDIT BELOW THIS LINE OR YOU RISK LOSING SUPPORT FOR THIS SKRIPT
 
 on load:
-    send "&7[&a&lSkEco&7] - &2Loaded Successfully" to console
     $ thread
     set {_text} to text from "https://pastebin.com/raw/Y1PhfrhM"
+    send "&7[&a&lSkEco&7] - &2Loaded Successfully" to console
     if {_text} is not "{@version}":
         send "&7[&a&lSkEco&7] - &2Running version: {@version}" to console
         send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_text}%" to console
@@ -198,40 +198,66 @@ command /pay [<offline player>] [<number>]:
         else:
             send "{@prefix} {@permmessage}" to player
 
+function regex(n: object) :: text:
+    if "%{_n}%" contains ".":
+        set {_s::*} to split "%{_n}%" at "."
+        set {_n} to "%a({_s::1})%.%{_s::2}%"
+        return "%{_n}%"
+    else:
+        set {_n} to a("%{_n}%")
+        return "%{_n} ? 0%"
+function a(b: text) :: text:
+    if length of {_b} > 3:
+        return "%a(first length of {_b} - 3 characters of {_b})%,%last 3 characters of {_b}%"
+    return {_b}
 
-command /baltop:
+function sortHighestToLowest(indexes: strings, values: objects) :: strings:
+    set {_size} to size of {_values::*}
+    loop {_size} times:
+        loop {_size} - 1 times:
+            set {_value1} to {_values::%loop-number-2%}
+            set {_value2} to {_values::%loop-number-2 + 1%}
+            {_value1} is less than {_value2}
+            set {_index1} to {_indexes::%loop-number-2%}
+            set {_indexes::%loop-number-2%} to {_indexes::%loop-number-2 + 1%}
+            set {_values::%loop-number-2%} to {_value2}
+            set {_indexes::%loop-number-2 + 1%} to {_index1}
+            set {_values::%loop-number-2 + 1%} to {_value1}
+        remove 1 from {_size}
+    return {_indexes::*}
+
+function baltop(p: sender, page: Number):
+  set {_playersSorted::*} to sortHighestToLowest(indexes of {eco::balance::*}, {eco::balance::*})
+  set {_maxPage} to rounded up (size of {_playersSorted::*}/10)
+  if {_maxPage} is less than 1:
+    set {_maxPag} to 1
+  if {_page} is greater than {_maxPage}:
+    send "{@prefix} &cThat is not a valid page!" to {_p}
+    stop
+  if {_page} is less than 1:
+    send "{@prefix} &cThat is not a valid page!" to {_p}
+    stop
+  set {_pos} to 1
+  add (({_page}-1) * 10) to {_pos} 
+  set {_objects::*} to page {_page} of {_playersSorted::*} with 10 lines
+  if {_objects::*} is set:
+    send "" to {_p}
+    send "{@prefix} - &l&nTop Balances" to {_p}
+    send "" to {_p}
+    loop {_objects::*}:
+      set {_name} to loop-value parsed as offlineplayer
+      set {_bal} to regex({eco::balance::%loop-value%})
+      send "&b##%{_pos}% &b%{_name}% &8&l» &f$%{_bal}%" to {_p}
+      add 1 to {_pos}
+    send "" to {_p}
+    send "&7&o(( You are on page %{_page}% / %{_maxPage}% ))" to {_p}
+ 
+  else:
+    send "{@prefix} &cThat is not a valid page!" to {_p}
+
+command /baltop [<number=1>]:
+    aliases: /balancetop
     trigger:
-        if sender has permission "eco.baltop":
-            loop {eco::balance::*}:
-                add 1 to {_size}
-                if {_low.to.high.list::%loop-value%} is not set:
-                    set {_low.to.high.list::%loop-value%} to loop-index
-                else:
-                    set {_n} to 0
-                    loop {_size} times:
-                        set {_n} to {_n}+1
-                        {_low.to.high.list::%loop-value-1%.%{_n}%} is not set
-                        set {_low.to.high.list::%loop-value-1%.%{_n}%} to loop-index
-                        stop loop
-            wait 1 tick
-            set {_n} to size of {_low.to.high.list::*}
-            loop {_low.to.high.list::*}:
-                set {_high.to.low.list::%{_n}%} to loop-value
-                set {_n} to {_n}-1
-            wait 1 tick
-            set {_i} to 0
-            send "&7&m-----------&8< {@prefix} &6Top10 &8>&7&m-----------"
-            loop {_high.to.low.list::*}:
-                add 1 to {_topnumber}
-                set {_player} to "%loop-value%" parsed as offline player
-                if "{@position}" = "before":
-                    send "&7%{_topnumber}% - &3%{_player}% &8» &7{@symbol}%{eco::balance::%loop-value%}%"
-                if "{@position}" = "after":
-                    send "&7%{_topnumber}% - &3%{_player}% &8» &7%{eco::balance::%loop-value%}%{@symbol}"
-                add 1 to {_i}
-                if {_topnumber} > 10: #this is top 10 you can change it
-                    stop
-            send "&7&m-----------------------------------"
-        else:
-            send "{@prefix} {@permmessage}"
+        if sender has permission "eco.baltop":        
+            baltop(sender, arg-1)
 
