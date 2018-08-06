@@ -14,7 +14,7 @@ options:
     firstjoin: 500
 
     #The logo/name for your currency, and position (either use before or after)
-    symbol: $
+    symbol: $ #some other options € ¥ 
     currencyname: dollar
     position: before #Currency symbol position, either before or after currency
     
@@ -24,17 +24,18 @@ options:
     #Permission message
     permmessage: &cYou do not have the required permssion for this command
 
-    version: 1.0 #Do not change
+    version: 1.0.1 #Do not change
     
 #CODE - PLEASE DO NOT EDIT BELOW THIS LINE OR YOU RISK LOSING SUPPORT FOR THIS SKRIPT
 
 on load:
     send "&7[&a&lSkEco&7] - &2Loaded Successfully" to console
-    if text from "https://pastebin.com/raw/Y1PhfrhM" is not "{@version}":
-        set {_version} to text from "https://pastebin.com/raw/Y1PhfrhM"
+    $ thread
+    set {_text} to text from "https://pastebin.com/raw/Y1PhfrhM"
+    if {_text} is not "{@version}":
         send "&7[&a&lSkEco&7] - &2Running version: {@version}" to console
-        send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_version}%" to console
-    if text from "https://pastebin.com/raw/Y1PhfrhM" is "{@version}":
+        send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_text}%" to console
+    if {_text} is "{@version}":
         send "&7[&a&lSkEco&7] - &2Running current version: {@version}" to console
 
 on join:
