@@ -24,7 +24,7 @@ options:
     #Permission message
     permmessage: &cYou do not have the required permssion for this command
 
-    version: 1.1.1 #Do not change
+    version: 1.1.2 #Do not change
     
 #CODE - PLEASE DO NOT EDIT BELOW THIS LINE OR YOU RISK LOSING SUPPORT FOR THIS SKRIPT
 
@@ -37,6 +37,7 @@ on load:
         send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_text}%" to console
     if {_text} is "{@version}":
         send "&7[&a&lSkEco&7] - &2Running current version: {@version}" to console
+    delete {eco::indexes::*}
 
 on join:
     wait 1 second
@@ -212,19 +213,25 @@ function a(b: text) :: text:
     return {_b}
 
 function sortHighestToLowest(indexes: strings, values: objects) :: strings:
-    set {_size} to size of {_values::*}
-    loop {_size} times:
-        loop {_size} - 1 times:
-            set {_value1} to {_values::%loop-number-2%}
-            set {_value2} to {_values::%loop-number-2 + 1%}
-            {_value1} is less than {_value2}
-            set {_index1} to {_indexes::%loop-number-2%}
-            set {_indexes::%loop-number-2%} to {_indexes::%loop-number-2 + 1%}
-            set {_values::%loop-number-2%} to {_value2}
-            set {_indexes::%loop-number-2 + 1%} to {_index1}
-            set {_values::%loop-number-2 + 1%} to {_value1}
-        remove 1 from {_size}
-    return {_indexes::*}
+    if {eco::indexes::*} is not set:
+        set {_size} to size of {_values::*}
+        loop {_size} times:
+            loop {_size} - 1 times:
+                set {_value1} to {_values::%loop-number-2%}
+                set {_value2} to {_values::%loop-number-2 + 1%}
+                {_value1} is less than {_value2}
+                set {_index1} to {_indexes::%loop-number-2%}
+                set {_indexes::%loop-number-2%} to {_indexes::%loop-number-2 + 1%}
+                set {_values::%loop-number-2%} to {_value2}
+                set {_indexes::%loop-number-2 + 1%} to {_index1}
+                set {_values::%loop-number-2 + 1%} to {_value1}
+            remove 1 from {_size}
+        set {eco::indexes::*} to {_indexes::*}
+        return {eco::indexes::*}
+        wait 5 minute
+        delete {eco::indexes::*}
+    else:
+        return {eco::indexes::*}
 
 function baltop(p: sender, page: Number):
   loop {eco::balance::*}:
