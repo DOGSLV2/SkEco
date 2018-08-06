@@ -5,7 +5,7 @@
 #eco.baltop - Player can see top balances of players
 #eco.pay - Player can pay money to another player
 
-#eco.admin - Player can set/reset/add/remove to/from balance of other players
+#eco.admin - Player can set/reset/add/remove to/from balance of other players, also sees updates on login
 #eco.* - Player can use ALL eco commands
 
 #SERVER OPTIONS - CHANGE ANYTHING HERE YOU WOULD LIKE
@@ -20,60 +20,64 @@ options:
     
     #You can change the prefix of the economy messages
     prefix: &7[&a&lECO&7]
+    #You can change the color of the economy messages
+    msgcolor: &6
 
     #Permission message
     permmessage: &cYou do not have the required permssion for this command
 
-    version: 1.1.2 #Do not change
+    version: 1.2 #Do not change
     
 #CODE - PLEASE DO NOT EDIT BELOW THIS LINE OR YOU RISK LOSING SUPPORT FOR THIS SKRIPT
 
+# -- VERSION CHECK -- 
 on load:
-    $ thread
-    set {_text} to text from "https://pastebin.com/raw/Y1PhfrhM"
-    send "&7[&a&lSkEco&7] - &2Loaded Successfully" to console
-    if {_text} is not "{@version}":
+    send a "GET" request to "https://raw.githubusercontent.com/ShaneBeee/skripts/master/SkecoVersion"
+    set {_t} to last http response
+    set {_j} to {_t}'s body
+    set {_v::*} to {_j} split at "|"
+    send "&7[&a&lSkEco&7] - &2Loaded successfully" to console
+    if "{@version}" is not equal to "%{_v::2}%":
         send "&7[&a&lSkEco&7] - &2Running version: {@version}" to console
-        send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_text}%" to console
-    if {_text} is "{@version}":
+        send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_v::2}%" to console
+    else:
         send "&7[&a&lSkEco&7] - &2Running current version: {@version}" to console
     delete {eco::indexes::*}
+    delete {eco::saved::balance::*}
 
 on join:
     wait 1 second
     if player has permission "eco.admin":
-        if text from "https://pastebin.com/raw/Y1PhfrhM" is not "{@version}":
-            set {_version} to text from "https://pastebin.com/raw/Y1PhfrhM"
+        send a "GET" request to "https://raw.githubusercontent.com/ShaneBeee/skripts/master/SkecoVersion"
+        set {_t} to last http response
+        set {_j} to {_t}'s body
+        set {_v::*} to {_j} split at "|"
+        if "{@version}" is not equal to "%{_v::2}%":
             send "&7[&a&lSkEco&7] - &2Running version: {@version}" to player
-            send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_version}%" to player
+            send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_v::2}%" to player
 
-on first join:
-    set {eco::balance::%uuid of player%} to {@firstjoin}
-    set {eco::player::%uuid of player%} to player
 
-on join:
-    set {eco::player::%uuid of player%} to player
+# -- VAULT API HOOK-- 
 
 on vault player balance request:
     return {eco::balance::%uuid of event-offline player%}
-
 on vault currency decimals request:
     return 2
-
 on vault deposit request:
     add event-number to {eco::balance::%uuid of event-offline player%}
     return economy response with amount modified event-number, new balance {eco::balance::%uuid of event-offline player%}, response type success, and error message "none"
-
 on vault withdraw request:
     remove event-number from {eco::balance::%uuid of event-offline player%}
     return economy response with amount modified event-number, new balance {eco::balance::%uuid of event-offline player%}, response type success, and error message "none"
-
+on vault check player balance request:
+    if {eco::balance::%uuid of event-offline player%} is greater than event-number:
+        return true
+    else:
+        return false
 on vault enabled status request:
     return true
-
 on vault economy name request:
     return "SkEco"
-
 on vault format currency request:
     if "{@position}" is "before":
         return "{@symbol}%event-number%"
@@ -83,38 +87,57 @@ on vault plural currency name request:
     return "{@currencyname}s"
 on vault singular currency name request:
     return "{@currencyname}"
-
 on player has account request:
     if {eco::balance::%uuid of event-offline player%} is set:
         return true
     else:
         return false
-
 on create account request:
     set {eco::balance::%uuid of event-offline player%} to 0
     set {eco::player::%uuid of event-offline player%} to event-offline player
     return true
 
+
+# -- FUNCTIONS -- 
+function formatMoney(money: number) :: string:
+    set {_money} to "%{_money}%"
+    if {_money} contains ".":
+        if length of {_money} - first index of "." in {_money} is 2:
+            return {_money}
+        return join {_money} and "0"
+    else:
+        return {_money}
+
+on first join:
+    set {eco::balance::%uuid of player%} to {@firstjoin}
+    set {eco::player::%uuid of player%} to player
+
+on join:
+    set {eco::player::%uuid of player%} to player
+
 command /balance [<offline player>]:
     usage: Type /bal(ance) to see your balance
-    aliases: bal
+    aliases: bal, money
     executable by: players and console
     trigger:
         if arg-1 is not set:
             if sender is a player:
                 if player has permission "eco.bal":
-                    send "{@prefix} &6Balance: &a%balance of player%"
+                    if "{@position}" = "before":
+                        send "{@prefix} {@msgcolor}Balance: &a{@symbol}%formatMoney({eco::balance::%uuid of player%})%"
+                    if "{@position}" = "after":
+                        send "{@prefix} {@msgcolor}Balance: &a%formatMoney({eco::balance::%uuid of player%})%{@symbol}"
                 else:
                     send "{@prefix} {@permmessage}"
             if sender is console:
-                send "{@prefix} - &6The console has no balance"
+                send "{@prefix} - {@msgcolor}The console has no balance"
         if arg-1 is set:
             if sender has permission "eco.bal.other":
                 if {eco::balance::%uuid of arg-1%} is set:
                     if "{@position}" = "before":
-                        send "{@prefix} &3%arg-1%&6's Balance: &a{@symbol}%{eco::balance::%uuid of arg-1%}%"
+                        send "{@prefix} &3%arg-1%{@msgcolor}'s Balance: &a{@symbol}%formatMoney({eco::balance::%uuid of arg-1%})%"
                     if "{@position}" = "after":
-                        send "{@prefix} &3%arg-1%&6's Balance: &a%{eco::balance::%uuid of arg-1%}%{@symbol}"
+                        send "{@prefix} &3%arg-1%{@msgcolor}'s Balance: &a%formatMoney({eco::balance::%uuid of arg-1%})%{@symbol}"
                 if {eco::balance::%uuid of arg-1%} is not set:
                     send "{@prefix} - &3%arg-1% &chas not logged into this server"
             else:
@@ -127,49 +150,85 @@ command /eco [<text>] [<text>] [<number>]:
         if sender has permission "eco.admin":
             if arg-1 is set:
                 if arg-1 is "reset":
-                    set {_uuid} to uuid of arg-2 parsed as offline player
-                    set {eco::balance::%{_uuid}%} to {@firstjoin}
-                    send "{@prefix} - &3%arg-2%&6's balance has been reset to &3${@firstjoin}"
+                    if arg-2 is set:
+                        set {_uuid} to uuid of arg-2 parsed as offline player
+                        set {eco::balance::%{_uuid}%} to {@firstjoin}
+                        if "{@position}" = "before":
+                            send "{@prefix} - &3%arg-2%{@msgcolor}'s balance has been reset to &3{@symbol}{@firstjoin}"
+                        if "{@position}" = "after":
+                            send "{@prefix} - &3%arg-2%{@msgcolor}'s balance has been reset to &3{@firstjoin}{@symbol}"
+                    else:
+                        send "{@prefix} - {@msgcolor}Correct Usage: &3/eco reset <player>" to sender
                 if arg-1 is "set":
-                    set {_uuid} to uuid of arg-2 parsed as offline player
-                    set {eco::balance::%{_uuid}%} to arg-3
-                    send "{@prefix} - &3%arg-2%&6's balance has been set to &3$%arg-3%"
-                if arg-1 is "add":
-                    set {_uuid} to uuid of arg-2 parsed as offline player
-                    add arg-3 to {eco::balance::%{_uuid}%}
-                    send "{@prefix} - &6Added &3$%arg-3% &6to account of &3%arg-2%"
-                if arg-1 is "remove":
-                    set {_uuid} to uuid of arg-2 parsed as offline player
-                    remove arg-3 from {eco::balance::%{_uuid}%}
-                    send "{@prefix} - &6Removed &3$%arg-3% &6from account of &3%arg-2%"
+                    if arg-2 is set:
+                        if arg-3 is set:
+                            set {_uuid} to uuid of arg-2 parsed as offline player
+                            set {eco::balance::%{_uuid}%} to arg-3
+                            if "{@position}" = "before":
+                                send "{@prefix} - &3%arg-2%{@msgcolor}'s balance has been set to &3{@symbol}%formatMoney(arg-3)%"
+                            if "{@position}" = "after":
+                                send "{@prefix} - &3%arg-2%{@msgcolor}'s balance has been set to &3%formatMoney(arg-3)%{@symbol}"
+                        else:
+                            send "{@prefix} - {@msgcolor}Correct Usage: &3/eco set <player> <amount>" to sender
+                    else:
+                        send "{@prefix} - {@msgcolor}Correct Usage: &3/eco set <player> <amount>" to sender
+                if arg-1 is "add" or "give":
+                    if arg-2 is set:
+                        if arg-3 is set:
+                            set {_uuid} to uuid of arg-2 parsed as offline player
+                            add arg-3 to {eco::balance::%{_uuid}%}
+                            if "{@position}" = "before":
+                                send "{@prefix} - {@msgcolor}Added &3{@symbol}%formatMoney(arg-3)% {@msgcolor}to account of &3%arg-2%"
+                            if "{@position}" = "after":
+                                send "{@prefix} - {@msgcolor}Added &3%formatMoney(arg-3)%{@symbol} {@msgcolor}to account of &3%arg-2%"
+                        else:
+                            send "{@prefix} - {@msgcolor}Correct Usage: &3/eco add/give <player> <amount>" to sender
+                    else:
+                        send "{@prefix} - {@msgcolor}Correct Usage: &3/eco add/give <player> <amount>" to sender
+                if arg-1 is "remove" or "take":
+                    if arg-2 is set:
+                        if arg-3 is set:
+                            set {_uuid} to uuid of arg-2 parsed as offline player
+                            remove arg-3 from {eco::balance::%{_uuid}%}
+                            if "{@position}" = "before":
+                                send "{@prefix} - {@msgcolor}Removed &3{@symbol}%formatMoney(arg-3)% {@msgcolor}from account of &3%arg-2%"
+                            if "{@position}" = "after":
+                                send "{@prefix} - {@msgcolor}Removed &3%formatMoney(arg-3)%{@symbol}{@msgcolor}from account of &3%arg-2%"
+                        else:
+                            send "{@prefix} - {@msgcolor}Correct Usage: &3/eco remove/take <player> <amount>" to sender
+                    else:
+                        send "{@prefix} - {@msgcolor}Correct Usage: &3/eco remove/take <player> <amount>" to sender
                 if arg-1 is "convert":
                     if arg-2 is set:
                         if arg-2 is "essentials":
                             execute console command "vault-convert essentialseconomy skeco"
-                            send "{@prefix} &7- &6Conversion from Essentials to SkEco has started, check console for progress"
+                            send "{@prefix} &7- {@msgcolor}Conversion from Essentials to SkEco has started, check console for progress"
                         else:
-                            send "{@prefix} &7- &6Currently only essentials is set up for conversion."
-                            send "&6If you are using another economy plugin, use &b/vault-convert <the name of your eco plugin> skeco"
+                            send "{@prefix} &7- {@msgcolor}Currently only essentials is set up for conversion."
+                            send "{@msgcolor}If you are using another economy plugin, use &b/vault-convert <the name of your eco plugin> skeco"
                     if arg-2 is not set:
-                        send "{@prefix} &7- &6Correct usage: &b/eco convert <economy plugin> &6Currently only &bessentials &6is supported"
+                        send "{@prefix} &7- {@msgcolor}Correct usage: &b/eco convert <economy plugin> {@msgcolor}Currently only &bessentials {@msgcolor}is supported"
                 if arg-1 is "version":
-                    if text from "https://pastebin.com/raw/Y1PhfrhM" is not "{@version}":
-                        set {_version} to text from "https://pastebin.com/raw/Y1PhfrhM"
-                        send "&7[&a&lSkEco&7] - &2Running version: {@version}"
-                        send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_version}%"
-                    if text from "https://pastebin.com/raw/Y1PhfrhM" is "{@version}":
-                        send "&7[&a&lSkEco&7] - &2Running current version: {@version}"
+                    send a "GET" request to "https://raw.githubusercontent.com/ShaneBeee/skripts/master/SkecoVersion"
+                    set {_t} to last http response
+                    set {_j} to {_t}'s body
+                    set {_v::*} to {_j} split at "|"
+                    if "{@version}" is not equal to "%{_v::2}%":
+                        send "&7[&a&lSkEco&7] - &2Running version: {@version}" to player
+                        send "&7[&a&lSkEco&7] - &cUpdate available, version: %{_v::2}%" to sender
+                    else:
+                        send "&7[&a&lSkEco&7] - &2Running current version: {@version}" to sender
+                    delete {eco::indexes::*}
             else:
                 send "&7<=====>{@prefix}&7<=====>" to player
-                send "&3/eco set <player> <number> &7- &6Set the balance of player"
-                send "&3/eco add <player> <amount> &7- &6Add an amount to balance of player"
-                send "&3/eco remove <player> <amount> &7- &6Remove an amount from balance of player"
-                send "&3/eco reset <player> &7- &6Resets the players balance to the starting balace"
-                send "&3/eco convert <economy plugin> &7- &6Converts player balances from your previous economy plugin to SkEco - Currently only &bessentials&6 is supported"
-                send "&3/eco version &7- &6Shows the version of SkEco you are running as well as current version available"
+                send "&3/eco set <player> <number> &7- {@msgcolor}Set the balance of player"
+                send "&3/eco add/give <player> <amount> &7- {@msgcolor}Add an amount to balance of player"
+                send "&3/eco remove/take <player> <amount> &7- {@msgcolor}Remove an amount from balance of player"
+                send "&3/eco reset <player> &7- {@msgcolor}Resets the players balance to the starting balace"
+                send "&3/eco convert <economy plugin> &7- {@msgcolor}Converts player balances from your previous economy plugin to SkEco - Currently only &bessentials{@msgcolor} is supported"
+                send "&3/eco version &7- {@msgcolor}Shows the version of SkEco you are running as well as current version available"
         else:
             send "{@prefix} {@permmessage}"
-
 
 
 command /pay [<offline player>] [<number>]:
@@ -183,11 +242,11 @@ command /pay [<offline player>] [<number>]:
                             remove arg-2 from {eco::balance::%uuid of player%}
                             add arg-2 to {eco::balance::%uuid of arg-1%}
                             if "{@position}" = "before":
-                                send "{@prefix} - &6You sent &3{@symbol}%arg-2% &6to &3%arg-1%" to player
-                                send "{@prefix} - &3%player% &6sent you &3{@symbol}%arg-2%" to arg-1
+                                send "{@prefix} - {@msgcolor}You sent &3{@symbol}%formatMoney(arg-2)% {@msgcolor}to &3%arg-1%" to player
+                                send "{@prefix} - &3%player% {@msgcolor}sent you &3{@symbol}%formatMoney(arg-2)%" to arg-1
                             if "{@position}" = "after":
-                                send "{@prefix} - &6You sent &3%arg-2%{@symbol} &6to &3%arg-1%" to player
-                                send "{@prefix} - &3%player% &6sent you &3%arg-2%{@symbol}" to arg-1
+                                send "{@prefix} - {@msgcolor}You sent &3%formatMoney(arg-2)%{@symbol} {@msgcolor}to &3%arg-1%" to player
+                                send "{@prefix} - &3%player% {@msgcolor}sent you &3%formatMoney(arg-2)%@symbol}" to arg-1
                         else:
                             send "{@prefix} - &cYou do not have enough money to send"
                     else:
@@ -199,10 +258,20 @@ command /pay [<offline player>] [<number>]:
         else:
             send "{@prefix} {@permmessage}" to player
 
+# -- BAL TOP & BAL TOP FUNCTIONS -- 
+
+function formatMoney2(money: string) :: string:
+    set {_money} to "%{_money}%"
+    if {_money} contains ".":
+        if length of {_money} - first index of "." in {_money} is 2:
+            return {_money}
+        return join {_money} and "0"
+    else:
+        return {_money}
 function regex(n: object) :: text:
     if "%{_n}%" contains ".":
         set {_s::*} to split "%{_n}%" at "."
-        set {_n} to "%a({_s::1})%.%{_s::2}%"
+        set {_n} to "%a({_s::1})%.%last 2 characters of {_s::2}%"
         return "%{_n}%"
     else:
         set {_n} to a("%{_n}%")
@@ -213,60 +282,63 @@ function a(b: text) :: text:
     return {_b}
 
 function sortHighestToLowest(indexes: strings, values: objects) :: strings:
-    if {eco::indexes::*} is not set:
-        set {_size} to size of {_values::*}
-        loop {_size} times:
-            loop {_size} - 1 times:
-                set {_value1} to {_values::%loop-number-2%}
-                set {_value2} to {_values::%loop-number-2 + 1%}
-                {_value1} is less than {_value2}
-                set {_index1} to {_indexes::%loop-number-2%}
-                set {_indexes::%loop-number-2%} to {_indexes::%loop-number-2 + 1%}
-                set {_values::%loop-number-2%} to {_value2}
-                set {_indexes::%loop-number-2 + 1%} to {_index1}
-                set {_values::%loop-number-2 + 1%} to {_value1}
-            remove 1 from {_size}
-        set {eco::indexes::*} to {_indexes::*}
-        return {eco::indexes::*}
-        wait 5 minute
-        delete {eco::indexes::*}
-    else:
-        return {eco::indexes::*}
+    set {_size} to size of {_values::*}
+    loop {_size} times:
+        loop {_size} - 1 times:
+            set {_value1} to {_values::%loop-number-2%}
+            set {_value2} to {_values::%loop-number-2 + 1%}
+            {_value1} is less than {_value2}
+            set {_index1} to {_indexes::%loop-number-2%}
+            set {_indexes::%loop-number-2%} to {_indexes::%loop-number-2 + 1%}
+            set {_values::%loop-number-2%} to {_value2}
+            set {_indexes::%loop-number-2 + 1%} to {_index1}
+            set {_values::%loop-number-2 + 1%} to {_value1}
+        remove 1 from {_size}
+    set {eco::indexes::*} to {_indexes::*}
+    return {eco::indexes::*}
+    wait 5 minute
+    delete {eco::indexes::*}
+    delete {eco::saved::balance::*}
 
 function baltop(p: sender, page: Number):
-  loop {eco::balance::*}:
-    set {_loop::%loop-index%} to loop-index
-  set {_playersSorted::*} to sortHighestToLowest({_loop::*}, {eco::balance::*})
-  set {_maxPage} to rounded up (size of {_playersSorted::*}/10)
-  if {_maxPage} is less than 1:
-    set {_maxPag} to 1
-  if {_page} is greater than {_maxPage}:
-    send "{@prefix} &cThat is not a valid page!" to {_p}
-    stop
-  if {_page} is less than 1:
-    send "{@prefix} &cThat is not a valid page!" to {_p}
-    stop
-  set {_pos} to 1
-  add (({_page}-1) * 10) to {_pos} 
-  set {_objects::*} to page {_page} of {_playersSorted::*} with 10 lines
-  if {_objects::*} is set:
-    send "" to {_p}
-    send "{@prefix} - &l&nTop Balances" to {_p}
-    send "" to {_p}
-    loop {_objects::*}:
-      set {_name} to loop-value parsed as offlineplayer
-      set {_bal} to regex({eco::balance::%loop-value%})
-      send "&b##%{_pos}% &b%{_name}% &8&l» &f$%{_bal}%" to {_p}
-      add 1 to {_pos}
-    send "" to {_p}
-    send "&7&o(( You are on page %{_page}% / %{_maxPage}% ))" to {_p}
+    loop {eco::balance::*}:
+        set {_loop::%loop-index%} to loop-index
+    if {eco::indexes::*} is not set:
+        loop {eco::balance::*}:
+            set {eco::saved::balance::%loop-index%} to {eco::balance::%loop-index%}
+            set {_balance::%loop-index%} to {eco::balance::%loop-index%}
+        set {_playersSorted::*} to sortHighestToLowest({_loop::*}, {eco::balance::*})
+    else:
+        set {_playersSorted::*} to {eco::indexes::*}
+        loop {eco::balance::*}:
+            set {_balance::%loop-index%} to {eco::saved::balance::%loop-index%}
+    set {_maxPage} to 1 if size of {_playersSorted::*} is 0 else rounded up (size of {_playersSorted::*}/10)
+    if {_page} is greater than {_maxPage}:
+        send "{@prefix} &cThat is not a valid page!" to {_p}
+    else if {_page} is less than 1:
+        send "{@prefix} &cThat is not a valid page!" to {_p}
+    else:
+        send "" to {_p}
+        send "{@prefix} - &l&nTop Balances" to {_p}
+        send "" to {_p}
  
-  else:
-    send "{@prefix} &cThat is not a valid page!" to {_p}
+        set {_calcPage} to {_page} - 1
+        set {_i} to 0
+        set {_pos} to 1
+        loop {_playersSorted::*}:
+            if {_i} is between {_calcPage} * 10 and (({_calcPage} + 1) * 10) - 1:
+                set {_bal} to regex({_balance::%loop-value%})
+                set {_bal2} to formatMoney2({_bal})
+                send "&b##%{_pos}% &b%{eco::player::%loop-value%}% &8&l» &f$%{_bal2}%" to {_p}
+                add 1 to {_pos}
+            add 1 to {_i}
+        send "&7&o(( You are on page %{_page}% / %{_maxPage}% ))" to {_p}
 
 command /baltop [<number=1>]:
-    aliases: /balancetop
+    aliases: balancetop, topbal, topbalance
     trigger:
         if sender has permission "eco.baltop":        
             baltop(sender, arg-1)
+
+
 
