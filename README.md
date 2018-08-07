@@ -14,8 +14,8 @@ SkEco requires very little setup. It will run great out of the box. But I have a
 **Dependencies:**
 - [Skript](https://github.com/SkriptLang/Skript/releases) [Tested with Bensku 2.2 Dev36]
 - [Reqn](https://forums.skunity.com/resources/reqn.95/) [For versions >=1.2]
-- [SkVault](https://forums.skunity.com/resources/skvault-skript-economy-registerer.576/) + [Vault](https://www.spigotmc.org/resources/vault.34315/)
-- *the next 2 can be removed for versions 1.2 and above*
+- [SkVault](https://forums.skunity.com/resources/skvault-skript-economy-registerer.576/) + [Vault](https://www.spigotmc.org/resources/vault.34315/)  
+*The next 2 can be removed for versions 1.2 and above*
 - SkQuery [For versions <=1.1.2]
 - TuSKe [Pikachu Patch] [For versions <=1.1.2]
 
