@@ -8,7 +8,7 @@ Looking to ditch Essentials, but still need an economy plugin? Well look no furt
 This simple yet effective economy plugin, will run all your economy needs. Unlike other Skript based economy plugins, SkEco will link in with the VaultAPI and any plugins that require a Vault based economy, such as JobsReborn, ChestShop, ShopChest, AuctionHouse, GriefPrevention and many more.
 
 SkEco requires very little setup. It will run great out of the box. But I have added a few things you can configure yourself, such as the prefix for chat messages, your starting balance for new players, the name and symbol for your currency as well as the position of your currency symbol.
-**_NOTE - By default players will have no permissions, make sure to add them to your permission file_**
+- ![ ](https://placehold.it/15/f03c15/000000?text=+) **_NOTE - By default players will have no permissions, make sure to add them to your permission file_**
 
 **Dependencies:**
 - [Skript](https://github.com/SkriptLang/Skript/releases) [Tested with Bensku 2.2 Dev36]
