@@ -1,5 +1,5 @@
 options:
-	version: 2.1
+	version: 2.1.2
 
 #! Player Eco Functions
 
@@ -35,17 +35,17 @@ function skecoPlayerSet(uuid: string, p: text, m: number):
 
 function skecoPlayerLoad():
 	load yaml "plugins/SkEco/PlayerData.yml" as "SkEcoPlayerData"
-	set yaml value "Version" in "SkEcoPlayerData" to {@version}
+	set yaml value "Version" in "SkEcoPlayerData" to "{@version}"
 	set header of "SkEcoPlayerData" to "Player Data File" and "Not recommended to edit while server is running"
 	save yaml "SkEcoPlayerData"
 
 function skecoConfig():
 	load yaml "plugins/SkEco/config.yml" as "SkEcoConfig"
 	if yaml node "Version" in "SkEcoConfig" doesn't have value:
-		set yaml value "Version" in "SkEcoConfig" to {@version}
+		set yaml value "Version" in "SkEcoConfig" to "{@version}"
 		set comments of yaml node "Version" in "SkEcoConfig" to "DO NOT CHANGE VERSION"
-	if yaml value "Version" in "SkEcoConfig" is not {@version}:
-		set yaml value "Version" in "SkEcoConfig" to {@version}
+	if yaml value "Version" in "SkEcoConfig" is not "{@version}":
+		set yaml value "Version" in "SkEcoConfig" to "{@version}"
 
 	if yaml node "Options.Prefix" in "SkEcoConfig" doesn't have value:
 		set yaml value "Options.Prefix" in "SkEcoConfig" to "&7[&a&lECO&7]"
@@ -170,7 +170,7 @@ on create account request:
 	return true
 
 
-#! -- FUNCTIONS -- 
+#! -- FUNCTIONS -- !#
 function formatMoney(money: number) :: string:
 	set {_money} to "%{_money}%"
 	if {_money} contains ".":
@@ -192,10 +192,13 @@ on join:
 	set {_name} to yaml value "Player.%uuid of player%.Name" in "SkEcoPlayerData"
 	if {_name} != "%player%":
 		set yaml value "Player.%uuid of player%.Name" in "SkEcoPlayerData" to "%player%"
-	add {_name} to yaml list "Player.%uuid of player%.Previous Names" in "SkEcoPlayerData"
-	save yaml "SkEcoPlayerData"
+		if yaml list "Player.%uuid of player%.Previous Names" in "SkEcoPlayerData" is not set:
+			add {_name} to yaml list "Player.%uuid of player%.Previous Names" in "SkEcoPlayerData"
+		if yaml list "Player.%uuid of player%.Previous Names" in "SkEcoPlayerData" does not contain {_name}:
+			add {_name} to yaml list "Player.%uuid of player%.Previous Names" in "SkEcoPlayerData"
 	if yaml node "Player.%uuid of player%.Balance" in "SkEcoPlayerData" doesn't have value:
 		skecoPlayerNew(uuid of player, "%player%", {SkEco::Economy::StarBal})
+	save yaml "SkEcoPlayerData"
 
 
 
@@ -346,6 +349,12 @@ command /pay [<offline player>] [<number>]:
 				if arg-2 is set:
 					if arg-1 is not player:
 						if arg-2 <= skecoPlayerGet(uuid of player):
+							if arg-2 < 0:
+								send "%{SkEco::Config::Prefix}% - &cYou can not send a negative amount of money"
+								stop
+							if skecoPlayerGet(uuid of arg-1) is not set:
+								send "%{SkEco::Config::Prefix}% - &3%arg-1% &chas not played on this server before"
+								stop
 							skecoPlayerRemove(uuid of player, arg-2)
 							skecoPlayerAdd(uuid of arg-1, arg-2)
 							if "%{SkEco::Economy::SymPosition}%" = "before":
@@ -387,6 +396,11 @@ function a(b: text) :: text:
 		return "%a(first length of {_b} - 3 characters of {_b})%,%last 3 characters of {_b}%"
 	return {_b}
 
+#! Every 5 minutes the BalTop will reset
+
+every 5 minute:
+	delete {eco::*}
+
 function sortHighestToLowest(indexes: strings, values: objects) :: strings:
 	set {_size} to size of {_values::*}
 	loop {_size} times:
@@ -402,19 +416,17 @@ function sortHighestToLowest(indexes: strings, values: objects) :: strings:
 		remove 1 from {_size}
 	set {eco::indexes::*} to {_indexes::*}
 	return {eco::indexes::*}
-	wait 5 minute
-	delete {eco::*}
+	
 
 function baltop(p: sender, page: Number):
-	loop yaml node list "Player" from "SkEcoPlayerData":
-		set {_bal} to yaml value "%loop-value%.Balance" from "SkEcoPlayerData"
-		set {_uuidlist::*} to loop-value split at "."
-		set {eco::temp::balance::%{_uuidlist::2}%} to yaml value "%loop-value%.Balance" from "SkEcoPlayerData"
-		set {eco::temp::player::%{_uuidlist::2}%} to "%{_uuidlist::2}%" parsed as offline player
-	loop {eco::temp::balance::*}:
-		set {_loop::%loop-index%} to loop-index
 	if {eco::indexes::*} is not set:
+		loop yaml node list "Player" from "SkEcoPlayerData":
+			set {_bal} to yaml value "%loop-value%.Balance" from "SkEcoPlayerData"
+			set {_uuidlist::*} to loop-value split at "."
+			set {eco::temp::balance::%{_uuidlist::2}%} to yaml value "%loop-value%.Balance" from "SkEcoPlayerData"
+			set {eco::temp::player::%{_uuidlist::2}%} to "%{_uuidlist::2}%" parsed as offline player
 		loop {eco::temp::balance::*}:
+			set {_loop::%loop-index%} to loop-index
 			set {eco::saved::balance::%loop-index%} to {eco::temp::balance::%loop-index%}
 			set {_balance::%loop-index%} to {eco::temp::balance::%loop-index%}
 		set {_playersSorted::*} to sortHighestToLowest({_loop::*}, {eco::temp::balance::*})
@@ -439,7 +451,7 @@ function baltop(p: sender, page: Number):
 			if {_i} is between {_calcPage} * 10 and (({_calcPage} + 1) * 10) - 1:
 				set {_bal} to regex({_balance::%loop-value%})
 				set {_bal2} to formatMoney2({_bal})
-				send "&b##%{_pos}% &b%{eco::temp::player::%loop-value%}% &8&l» &f$%{_bal2}%" to {_p}
+				send "&b##%{_i} + 1% &b%{eco::temp::player::%loop-value%}% &8&l» &f$%{_bal2}%" to {_p}
 				add 1 to {_pos}
 			add 1 to {_i}
 		send "&7&o(( You are on page %{_page}% / %{_maxPage}% ))" to {_p}
