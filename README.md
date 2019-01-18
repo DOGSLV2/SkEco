@@ -1,6 +1,7 @@
 # SkEco
 *A simple yet effective vault economy Skript for your server.*    
 ![Alt Text](https://i.imgur.com/KQAXWNe.png)
+
 ![GitHub release](https://img.shields.io/github/release/ShaneBeee/SkEco.svg)
 ![GitHub issues](https://img.shields.io/github/issues-raw/ShaneBeee/SkEco.svg)
 ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/ShaneBeee/SkEco.svg)
